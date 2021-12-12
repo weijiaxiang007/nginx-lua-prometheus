@@ -1,6 +1,63 @@
 [![Build Status](https://secure.travis-ci.org/knyar/nginx-lua-prometheus.svg?branch=master)](http://travis-ci.org/knyar/nginx-lua-prometheus?branch=master)
 [![Coverage Status](https://coveralls.io/repos/github/knyar/nginx-lua-prometheus/badge.svg?branch=master)](https://coveralls.io/github/knyar/nginx-lua-prometheus?branch=master)
 
+
+# Prometheus 自定义监控项
+
+在官方的demo之上做了扩展
+新增了以下监控项目：
+- 请求次数统计(域名维度)
+- 状态码统计
+- 发送字节数 bytes_sent
+- 接收字节数 bytes receive
+- request_time 统计
+- upstream_time 统计
+- https session 复用率
+
+> 使用方法:
+
+``` nginx
+
+events {
+    worker_connections 30;
+}
+
+http {
+    lua_shared_dict prometheus_metrics 10M;
+    lua_package_path "nginx-lua-prometheus/?.lua;;";
+
+    init_worker_by_lua_file nginx-lua-prometheus/init_prometheus.lua;
+    log_by_lua_file nginx-lua-prometheus/record.lua;
+
+    server {
+        listen 18002;
+	      server_name kiosk.io;
+	      set $xlocation 'test_nginx';
+
+	      location / {
+	        content_by_lua '
+	  	      -- sleep for 10-20ms.
+              ngx.sleep(0.01 + (0.01 * math.random()))
+              ngx.say("ok")	
+          ';
+        }
+
+        location /metrics {
+          content_by_lua_file nginx-lua-prometheus/output.lua;
+        }
+
+	      location /flash {
+          content_by_lua_block {
+		        local log_dict = ngx.shared.prometheus_metrics
+		        log_dict:flush_all()
+          }
+        }
+    }
+}
+
+```
+
+
 # Prometheus metric library for Nginx
 
 This is a Lua library that can be used with Nginx to keep track of metrics and

@@ -437,6 +437,45 @@ local function inc_counter(self, value, label_values)
   c:incr(k, value)
 end
 
+-- Get counter metric value.
+--
+-- Counters are incremented in the per-worker counter, which will eventually get
+-- flushed into the global shared dictionary.
+--
+-- Returns:
+-- - `self` must be counter
+-- [0] the value of counter 
+local function get_counter(self, label_values)
+  if self.typ ~= TYPE_COUNTER then
+    ngx.log(ngx.ERR, "get_counter: no counter caller")
+  end
+
+  local key, err
+  key, err = lookup_or_create(self, label_values)
+  if err then
+    ngx.log(ngx.ERR, "awwad error  错误了")
+    self._log_error(err)
+    return
+  end
+
+  local c = self._counter
+  if not c then
+    c = self.parent._counter
+    if not c then
+      self._log_error(ERR_MSG_COUNTER_NOT_INITIALIZED)
+      return
+    end
+    self._counter = c
+  end
+
+  local value, err = c:get(key)
+  if value then
+    self._log_error("metric counter no key")
+    return 0
+  end
+  return value
+end
+
 -- Delete a counter or a gauge metric.
 --
 -- Args:
@@ -767,6 +806,7 @@ local function register(self, name, help, label_names, buckets, typ)
       metric.inc = inc_gauge
     else
       metric.inc = inc_counter
+      metric.get = get_counter
     end
     metric.del = del
   else
