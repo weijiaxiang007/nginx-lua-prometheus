@@ -24,8 +24,8 @@ end
 
 ---- bytes receive 
 local ngx_bytes_receive = tonumber(ngx.var.request_length)
-    ngx_bytes_receive:inc(ngx_bytes_receive, {ngx_host, ngx_xlocation})
-if 
+ngx_bytes_receive:inc(ngx_bytes_receive, {ngx_host, ngx_xlocation})
+ 
 
 ---- request_time统计
 metric_requests_time:observe(ngx_request_time, {ngx_host, ngx_xlocation})
